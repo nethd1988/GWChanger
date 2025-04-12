@@ -50,7 +50,7 @@ namespace GWChanger
                                     IP = ip,
                                     Provider = "",
                                     Speed = "",
-                                    DisplayName = $"{ip} / {name}"
+                                    DisplayName = $"{name} {ip}"
                                 });
                             }
                         }
@@ -65,12 +65,8 @@ namespace GWChanger
                                 var speed = parts.Length > 3 ? parts[3].Trim() : "";
 
                                 string displayName = ip;
-                                if (!string.IsNullOrEmpty(name))
-                                    displayName += $" / {name}";
                                 if (!string.IsNullOrEmpty(provider))
-                                    displayName += $" / {provider}";
-                                if (!string.IsNullOrEmpty(speed))
-                                    displayName += $" / {speed}";
+                                    displayName = $"{provider} {ip}";
 
                                 _gatewayItems.Add(new
                                 {
@@ -135,7 +131,10 @@ namespace GWChanger
                         {
                             if (item.IP == _currentGateway)
                             {
-                                CurrentGatewayText.Text = item.DisplayName;
+                                if (!string.IsNullOrEmpty(item.Provider))
+                                    CurrentGatewayText.Text = $"{item.Provider} {item.IP}";
+                                else
+                                    CurrentGatewayText.Text = item.IP;
                                 break;
                             }
                         }
@@ -161,7 +160,8 @@ namespace GWChanger
                         Arguments = "/c ipconfig",
                         UseShellExecute = false,
                         RedirectStandardOutput = true,
-                        CreateNoWindow = true
+                        CreateNoWindow = true,
+                        WindowStyle = ProcessWindowStyle.Hidden
                     }
                 };
 
@@ -230,7 +230,10 @@ namespace GWChanger
 
                     // Cập nhật hiển thị với thông tin đầy đủ nếu có
                     dynamic selectedGateway = GatewayComboBox.SelectedItem;
-                    CurrentGatewayText.Text = selectedGateway.DisplayName;
+                    if (!string.IsNullOrEmpty(selectedGateway.Provider))
+                        CurrentGatewayText.Text = $"{selectedGateway.Provider} {selectedGateway.IP}";
+                    else
+                        CurrentGatewayText.Text = selectedGateway.IP;
 
                     StatusText.Text = "Hoàn tất";
                     MessageBox.Show($"Đã đổi sang Gateway {gatewayIP}", "Thành công", MessageBoxButton.OK, MessageBoxImage.Information);
@@ -260,7 +263,8 @@ namespace GWChanger
                 CreateNoWindow = true,
                 UseShellExecute = false,
                 RedirectStandardOutput = true,
-                RedirectStandardError = true
+                RedirectStandardError = true,
+                WindowStyle = ProcessWindowStyle.Hidden
             };
 
             var process = new Process { StartInfo = processInfo };
