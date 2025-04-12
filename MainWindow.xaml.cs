@@ -36,47 +36,20 @@ namespace GWChanger
                 {
                     if (!string.IsNullOrWhiteSpace(line))
                     {
-                        // Hỗ trợ cả định dạng cũ và mới
-                        if (line.Contains("-"))
+                        // Định dạng đơn giản: Provider IP
+                        var parts = line.Split(new[] { ' ' }, 2);
+                        if (parts.Length == 2)
                         {
-                            var parts = line.Split(new[] { '-' }, 2);
-                            if (parts.Length == 2)
-                            {
-                                var name = parts[0].Trim();
-                                var ip = parts[1].Trim();
-                                _gatewayItems.Add(new
-                                {
-                                    Name = name,
-                                    IP = ip,
-                                    Provider = "",
-                                    Speed = "",
-                                    DisplayName = $"{name} {ip}"
-                                });
-                            }
-                        }
-                        else if (line.Contains("/"))
-                        {
-                            var parts = line.Split(new[] { '/' }, StringSplitOptions.RemoveEmptyEntries);
-                            if (parts.Length >= 2)
-                            {
-                                var ip = parts[0].Trim();
-                                var name = parts[1].Trim();
-                                var provider = parts.Length > 2 ? parts[2].Trim() : "";
-                                var speed = parts.Length > 3 ? parts[3].Trim() : "";
+                            var provider = parts[0].Trim();
+                            var ip = parts[1].Trim();
 
-                                string displayName = ip;
-                                if (!string.IsNullOrEmpty(provider))
-                                    displayName = $"{provider} {ip}";
-
-                                _gatewayItems.Add(new
-                                {
-                                    Name = name,
-                                    IP = ip,
-                                    Provider = provider,
-                                    Speed = speed,
-                                    DisplayName = displayName
-                                });
-                            }
+                            _gatewayItems.Add(new
+                            {
+                                Name = $"{provider} {ip}",
+                                IP = ip,
+                                Provider = provider,
+                                DisplayName = $"{provider} {ip}"
+                            });
                         }
                     }
                 }
@@ -95,10 +68,10 @@ namespace GWChanger
             {
                 using (StreamWriter writer = new StreamWriter(filePath))
                 {
-                    writer.WriteLine("192.168.1.1 / Gateway 1 / Viettel / 300Mbps");
-                    writer.WriteLine("192.168.1.2 / Gateway 2 / VNPT / 200Mbps");
-                    writer.WriteLine("192.168.1.3 / Gateway 3 / FPT / 100Mbps");
-                    writer.WriteLine("192.168.1.4 / Gateway 4 / CMC / 150Mbps");
+                    writer.WriteLine("Viettel 192.168.1.1");
+                    writer.WriteLine("VNPT 192.168.1.2");
+                    writer.WriteLine("FPT 192.168.1.3");
+                    writer.WriteLine("CMC 192.168.1.4");
                 }
 
                 MessageBox.Show("Đã tạo file cấu hình gateway mặc định.\nVui lòng thay đổi cấu hình trong file gateways.txt sau đó khởi động lại ứng dụng!",
@@ -124,19 +97,22 @@ namespace GWChanger
                     Dispatcher.Invoke(() =>
                     {
                         _currentGateway = string.IsNullOrEmpty(gateway) ? "Không xác định" : gateway;
-                        CurrentGatewayText.Text = _currentGateway;
 
                         // Tìm thông tin bổ sung cho gateway hiện tại
+                        bool found = false;
                         foreach (dynamic item in _gatewayItems)
                         {
                             if (item.IP == _currentGateway)
                             {
-                                if (!string.IsNullOrEmpty(item.Provider))
-                                    CurrentGatewayText.Text = $"{item.Provider} {item.IP}";
-                                else
-                                    CurrentGatewayText.Text = item.IP;
+                                CurrentGatewayText.Text = $"{item.Provider} {item.IP}";
+                                found = true;
                                 break;
                             }
+                        }
+
+                        if (!found)
+                        {
+                            CurrentGatewayText.Text = _currentGateway;
                         }
                     });
                 });
@@ -194,19 +170,24 @@ namespace GWChanger
             if (GatewayComboBox.SelectedItem != null)
             {
                 dynamic selectedGateway = GatewayComboBox.SelectedItem;
-                // Chỉ thông báo, không thay đổi gateway ngay
                 StatusText.Text = $"Đã chọn {selectedGateway.Name}";
+
+                // Tự động thực hiện đổi gateway khi chọn
+                AutoChangeGateway(selectedGateway.IP);
             }
         }
 
-        private async Task ChangeGateway(string gatewayIP)
+        private async void AutoChangeGateway(string gatewayIP)
         {
+            bool success = false;
             try
             {
                 ChangeButton.IsEnabled = false;
+                ExitButton.IsEnabled = false;
+                GatewayComboBox.IsEnabled = false;
                 StatusText.Text = "Đang thực hiện...";
 
-                bool success = await Task.Run(() =>
+                success = await Task.Run(() =>
                 {
                     try
                     {
@@ -228,30 +209,41 @@ namespace GWChanger
                     await AnimateProgressBar();
                     _currentGateway = gatewayIP;
 
-                    // Cập nhật hiển thị với thông tin đầy đủ nếu có
-                    dynamic selectedGateway = GatewayComboBox.SelectedItem;
-                    if (!string.IsNullOrEmpty(selectedGateway.Provider))
-                        CurrentGatewayText.Text = $"{selectedGateway.Provider} {selectedGateway.IP}";
-                    else
-                        CurrentGatewayText.Text = selectedGateway.IP;
+                    // Tìm provider cho gateway đã đổi
+                    string displayText = gatewayIP;
+                    foreach (dynamic item in _gatewayItems)
+                    {
+                        if (item.IP == gatewayIP)
+                        {
+                            displayText = item.DisplayName;
+                            break;
+                        }
+                    }
 
+                    CurrentGatewayText.Text = displayText;
                     StatusText.Text = "Hoàn tất";
-                    MessageBox.Show($"Đã đổi sang Gateway {gatewayIP}", "Thành công", MessageBoxButton.OK, MessageBoxImage.Information);
+
+                    // Tự động đóng ứng dụng sau khi hoàn thành (không hiển thị MessageBox)
+                    await Task.Delay(500); // Chờ nửa giây để người dùng thấy thông báo "Hoàn tất"
+                    Application.Current.Shutdown();
                 }
                 else
                 {
                     StatusText.Text = "Lỗi";
                     MessageBox.Show("Không thể thay đổi Gateway. Hãy chắc chắn bạn đang chạy với quyền Administrator.", "Lỗi", MessageBoxButton.OK, MessageBoxImage.Error);
+                    ChangeButton.IsEnabled = true;
+                    ExitButton.IsEnabled = true;
+                    GatewayComboBox.IsEnabled = true;
+                    ProgressBar.Value = 0;
                 }
             }
             catch (Exception ex)
             {
                 StatusText.Text = "Lỗi";
                 MessageBox.Show($"Lỗi khi đổi gateway: {ex.Message}", "Lỗi", MessageBoxButton.OK, MessageBoxImage.Error);
-            }
-            finally
-            {
                 ChangeButton.IsEnabled = true;
+                ExitButton.IsEnabled = true;
+                GatewayComboBox.IsEnabled = true;
                 ProgressBar.Value = 0;
             }
         }
@@ -287,12 +279,12 @@ namespace GWChanger
             }
         }
 
-        private async void ChangeButton_Click(object sender, RoutedEventArgs e)
+        private void ChangeButton_Click(object sender, RoutedEventArgs e)
         {
             if (GatewayComboBox.SelectedItem != null)
             {
                 dynamic selectedGateway = GatewayComboBox.SelectedItem;
-                await ChangeGateway(selectedGateway.IP);
+                AutoChangeGateway(selectedGateway.IP);
             }
             else
             {
