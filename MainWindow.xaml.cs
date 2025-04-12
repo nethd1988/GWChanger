@@ -2,9 +2,12 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
+using System.ServiceProcess;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using System.Reflection;
 
 namespace GWChanger
 {
@@ -12,17 +15,147 @@ namespace GWChanger
     {
         private string _currentGateway;
         private List<dynamic> _gatewayItems = new List<dynamic>();
+        private readonly string[] _requiredServices = { "KzoneClient", "KzoneSyncService" };
+        private bool _servicesRunning = false;
 
         public MainWindow()
         {
             InitializeComponent();
+
+            // Kiểm tra dịch vụ nhưng không hiển thị bất kỳ thông báo nào
+            _servicesRunning = CheckRequiredServices();
+
+            // Luôn tải danh sách gateway bất kể trạng thái dịch vụ
             LoadGatewayList();
             GetCurrentGateway();
         }
 
+        private string GetGatewayFilePath()
+        {
+            try
+            {
+                // Lấy đường dẫn thực thi hiện tại
+                string exePath = Assembly.GetExecutingAssembly().Location;
+                // Lấy ký tự ổ đĩa từ đường dẫn (ví dụ: "E:\")
+                string driveLetter = Path.GetPathRoot(exePath);
+                // Tạo đường dẫn tới file gateways.txt ở thư mục gốc của ổ đĩa
+                return Path.Combine(driveLetter, "gateways.txt");
+            }
+            catch
+            {
+                // Nếu có lỗi, sử dụng đường dẫn mặc định là thư mục hiện tại
+                return "gateways.txt";
+            }
+        }
+
+        private bool CheckRequiredServices()
+        {
+            try
+            {
+                // Cách 1: Kiểm tra bằng ServiceController
+                try
+                {
+                    ServiceController[] services = ServiceController.GetServices();
+                    foreach (string requiredService in _requiredServices)
+                    {
+                        var service = services.FirstOrDefault(s => s.ServiceName.Equals(requiredService, StringComparison.OrdinalIgnoreCase));
+                        if (service != null && service.Status == ServiceControllerStatus.Running)
+                        {
+                            return true;
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"Lỗi khi kiểm tra dịch vụ bằng ServiceController: {ex.Message}");
+                }
+
+                // Cách 2: Kiểm tra bằng WMI
+                try
+                {
+                    foreach (string requiredService in _requiredServices)
+                    {
+                        string query = $"SELECT * FROM Win32_Service WHERE Name='{requiredService}' AND State='Running'";
+                        var searcher = new System.Management.ManagementObjectSearcher("root\\CIMV2", query);
+                        var results = searcher.Get();
+
+                        if (results.Count > 0)
+                        {
+                            return true;
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"Lỗi khi kiểm tra dịch vụ bằng WMI: {ex.Message}");
+                }
+
+                // Cách 3: Kiểm tra bằng Process
+                try
+                {
+                    foreach (string requiredService in _requiredServices)
+                    {
+                        Process[] processes = Process.GetProcessesByName(requiredService);
+                        if (processes.Length > 0)
+                        {
+                            return true;
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"Lỗi khi kiểm tra bằng Process: {ex.Message}");
+                }
+
+                // Cách 4: Sử dụng lệnh CMD để kiểm tra dịch vụ
+                try
+                {
+                    foreach (string requiredService in _requiredServices)
+                    {
+                        string output = ExecuteCommandWithOutput($"sc query {requiredService}");
+                        if (output.Contains("RUNNING"))
+                        {
+                            return true;
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"Lỗi khi kiểm tra dịch vụ bằng SC: {ex.Message}");
+                }
+
+                // Không tìm thấy dịch vụ nào đang chạy
+                return false;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Lỗi tổng thể khi kiểm tra dịch vụ: {ex.Message}");
+                return false;
+            }
+        }
+
+        private string ExecuteCommandWithOutput(string command)
+        {
+            var processInfo = new ProcessStartInfo("cmd.exe", $"/c {command}")
+            {
+                CreateNoWindow = true,
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                WindowStyle = ProcessWindowStyle.Hidden
+            };
+
+            var process = new Process { StartInfo = processInfo };
+            process.Start();
+            string output = process.StandardOutput.ReadToEnd();
+            process.WaitForExit();
+
+            return output;
+        }
+
         private void LoadGatewayList()
         {
-            string filePath = "gateways.txt";
+            string filePath = GetGatewayFilePath();
 
             if (!File.Exists(filePath))
             {
@@ -74,7 +207,7 @@ namespace GWChanger
                     writer.WriteLine("CMC 192.168.1.4");
                 }
 
-                MessageBox.Show("Đã tạo file cấu hình gateway mặc định.\nVui lòng thay đổi cấu hình trong file gateways.txt sau đó khởi động lại ứng dụng!",
+                MessageBox.Show($"Đã tạo file cấu hình gateway mặc định tại:\n{filePath}\nVui lòng thay đổi cấu hình trong file gateways.txt sau đó khởi động lại ứng dụng!",
                     "Thông báo", MessageBoxButton.OK, MessageBoxImage.Information);
 
                 Process.Start("notepad.exe", filePath);
@@ -172,8 +305,18 @@ namespace GWChanger
                 dynamic selectedGateway = GatewayComboBox.SelectedItem;
                 StatusText.Text = $"Đã chọn {selectedGateway.Name}";
 
-                // Tự động thực hiện đổi gateway khi chọn
-                AutoChangeGateway(selectedGateway.IP);
+                // Chỉ thực hiện đổi gateway nếu dịch vụ đang chạy, không hiển thị thông báo nếu không
+                if (_servicesRunning)
+                {
+                    // Tự động thực hiện đổi gateway khi chọn
+                    AutoChangeGateway(selectedGateway.IP);
+                }
+                else
+                {
+                    // Không hiển thị bất kỳ thông báo nào về dịch vụ
+                    // Chỉ vô hiệu hóa nút thay đổi
+                    ChangeButton.IsEnabled = false;
+                }
             }
         }
 
@@ -281,6 +424,12 @@ namespace GWChanger
 
         private void ChangeButton_Click(object sender, RoutedEventArgs e)
         {
+            if (!_servicesRunning)
+            {
+                // Không hiển thị thông báo về dịch vụ, chỉ đơn giản là không làm gì cả
+                return;
+            }
+
             if (GatewayComboBox.SelectedItem != null)
             {
                 dynamic selectedGateway = GatewayComboBox.SelectedItem;

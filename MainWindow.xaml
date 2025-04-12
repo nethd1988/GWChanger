@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:GWChanger"
         mc:Ignorable="d"
-        Title="Gateway Kzonesoft - Tập Thể ae KZ" 
+        Title="Gateway - Kzonesoft" 
         Height="450" 
         Width="380"
         WindowStartupLocation="CenterScreen"
@@ -195,7 +195,7 @@
                     BorderThickness="0,1,0,0" 
                     Padding="0,15,0,0">
                 <StackPanel>
-                    <TextBlock Text="Phần mềm quản lý Gateway" 
+                    <TextBlock Text="Phần mềm quản lý Gateway - Kzonesoft" 
                                Foreground="#FF4500" 
                                FontWeight="Bold" 
                                FontSize="14"
