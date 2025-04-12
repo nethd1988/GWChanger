@@ -1,0 +1,180 @@
+﻿<Window x:Class="GWChanger.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:GWChanger"
+        mc:Ignorable="d"
+        Title="Đổi Gateway Gà Luoc" 
+        Height="450" 
+        Width="380"
+        WindowStartupLocation="CenterScreen"
+        ResizeMode="NoResize"
+        Background="#1E1E1E">
+
+    <Window.Resources>
+        <Style TargetType="Button" x:Key="GamingButton">
+            <Setter Property="Background" Value="#2D2D30"/>
+            <Setter Property="Foreground" Value="#DDD"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Height" Value="40"/>
+            <Setter Property="Margin" Value="5"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="border" 
+                                Background="{TemplateBinding Background}" 
+                                BorderBrush="#FF4500" 
+                                BorderThickness="2" 
+                                CornerRadius="5">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Background" Value="#FF4500" TargetName="border"/>
+                                <Setter Property="BorderBrush" Value="#FF7F50" TargetName="border"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter Property="Background" Value="#CC3700" TargetName="border"/>
+                                <Setter Property="BorderBrush" Value="#FF4500" TargetName="border"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Background" Value="#333" TargetName="border"/>
+                                <Setter Property="BorderBrush" Value="#555" TargetName="border"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style TargetType="ComboBox">
+            <Setter Property="Background" Value="#2D2D30"/>
+            <Setter Property="Foreground" Value="#DDD"/>
+            <Setter Property="Height" Value="40"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="BorderBrush" Value="#555"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+
+        <Style TargetType="TextBlock" x:Key="HeaderText">
+            <Setter Property="Foreground" Value="#DDD"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Margin" Value="0,0,0,5"/>
+        </Style>
+
+        <Style TargetType="TextBlock" x:Key="GatewayText">
+            <Setter Property="Foreground" Value="#FF4500"/>
+            <Setter Property="FontSize" Value="24"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="TextAlignment" Value="Center"/>
+            <Setter Property="Margin" Value="0,5,0,20"/>
+        </Style>
+
+        <Style TargetType="ProgressBar">
+            <Setter Property="Height" Value="20"/>
+            <Setter Property="Background" Value="#333"/>
+            <Setter Property="BorderBrush" Value="#555"/>
+            <Setter Property="Foreground" Value="#FF4500"/>
+        </Style>
+    </Window.Resources>
+
+    <Border Background="#2D2D30" CornerRadius="10" Margin="10">
+        <Grid Margin="20">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <!-- Current Gateway Section -->
+            <TextBlock Grid.Row="0" 
+                       Text="Gateway đang sử dụng:" 
+                       Style="{StaticResource HeaderText}"/>
+
+            <TextBlock Grid.Row="1" 
+                       x:Name="CurrentGatewayText"
+                       Text="192.168.1.1" 
+                       Style="{StaticResource GatewayText}"/>
+
+            <!-- Gateway Selection Section -->
+            <TextBlock Grid.Row="2" 
+                       Text="Đổi sang Gateway:" 
+                       Style="{StaticResource HeaderText}"/>
+
+            <ComboBox Grid.Row="3" 
+                      x:Name="GatewayComboBox"
+                      Margin="0,5,0,10"
+                      SelectionChanged="GatewayComboBox_SelectionChanged"/>
+
+            <!-- Action Buttons -->
+            <Grid Grid.Row="4">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <Button Grid.Column="0"
+                        x:Name="ChangeButton"
+                        Content="Đổi Gateway"
+                        Style="{StaticResource GamingButton}"
+                        Click="ChangeButton_Click"/>
+
+                <Button Grid.Column="1"
+                        x:Name="ExitButton"
+                        Content="Thoát"
+                        Style="{StaticResource GamingButton}"
+                        Click="ExitButton_Click"/>
+            </Grid>
+
+            <!-- Progress Bar -->
+            <ProgressBar Grid.Row="5"
+                         x:Name="ProgressBar"
+                         Margin="0,10,0,5"
+                         Maximum="100"
+                         Value="0"/>
+
+            <TextBlock Grid.Row="6"
+                       x:Name="StatusText"
+                       Text="Sẵn sàng"
+                       HorizontalAlignment="Center"
+                       Foreground="#AAA"
+                       Margin="0,0,0,15"/>
+
+            <!-- Logo Section -->
+            <Border Grid.Row="7" 
+                    BorderBrush="#555" 
+                    BorderThickness="0,1,0,0" 
+                    Padding="0,15,0,0">
+
+                <StackPanel>
+                    <Image x:Name="LogoImage" 
+                           Source="logo.png" 
+                           Height="50" 
+                           Margin="0,0,0,10"
+                           Cursor="Hand"/>
+
+                    <TextBlock Text="Cung cấp:" 
+                               Foreground="#FF4500" 
+                               FontWeight="Bold" 
+                               HorizontalAlignment="Center"/>
+
+                    <TextBlock Text="* Máy chủ/hệ thống mạng cho phòng Game" 
+                               Foreground="#DDD" 
+                               HorizontalAlignment="Center"/>
+
+                    <TextBlock Text="* Dịch vụ cài đặt và bảo trì phòng Game" 
+                               Foreground="#DDD" 
+                               HorizontalAlignment="Center"/>
+                </StackPanel>
+            </Border>
+        </Grid>
+    </Border>
+</Window>
