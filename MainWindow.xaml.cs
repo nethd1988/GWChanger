@@ -11,7 +11,7 @@ namespace GWChanger
     public partial class MainWindow : Window
     {
         private string _currentGateway;
-        private List<dynamic> _gatewayItems = new List<dynamic>();
+        private List<Gateway> _gatewayItems = new List<Gateway>();
 
         public MainWindow()
         {
@@ -44,7 +44,7 @@ namespace GWChanger
                             {
                                 var name = parts[0].Trim();
                                 var ip = parts[1].Trim();
-                                _gatewayItems.Add(new
+                                _gatewayItems.Add(new Gateway
                                 {
                                     Name = name,
                                     IP = ip,
@@ -68,7 +68,7 @@ namespace GWChanger
                                 if (!string.IsNullOrEmpty(provider))
                                     displayName = $"{provider} {ip}";
 
-                                _gatewayItems.Add(new
+                                _gatewayItems.Add(new Gateway
                                 {
                                     Name = name,
                                     IP = ip,
@@ -127,7 +127,7 @@ namespace GWChanger
                         CurrentGatewayText.Text = _currentGateway;
 
                         // Tìm thông tin bổ sung cho gateway hiện tại
-                        foreach (dynamic item in _gatewayItems)
+                        foreach (Gateway item in _gatewayItems)
                         {
                             if (item.IP == _currentGateway)
                             {
@@ -193,7 +193,7 @@ namespace GWChanger
         {
             if (GatewayComboBox.SelectedItem != null)
             {
-                dynamic selectedGateway = GatewayComboBox.SelectedItem;
+                Gateway selectedGateway = GatewayComboBox.SelectedItem as Gateway;
                 // Chỉ thông báo, không thay đổi gateway ngay
                 StatusText.Text = $"Đã chọn {selectedGateway.Name}";
             }
@@ -229,7 +229,7 @@ namespace GWChanger
                     _currentGateway = gatewayIP;
 
                     // Cập nhật hiển thị với thông tin đầy đủ nếu có
-                    dynamic selectedGateway = GatewayComboBox.SelectedItem;
+                    Gateway selectedGateway = GatewayComboBox.SelectedItem as Gateway;
                     if (!string.IsNullOrEmpty(selectedGateway.Provider))
                         CurrentGatewayText.Text = $"{selectedGateway.Provider} {selectedGateway.IP}";
                     else
@@ -291,7 +291,7 @@ namespace GWChanger
         {
             if (GatewayComboBox.SelectedItem != null)
             {
-                dynamic selectedGateway = GatewayComboBox.SelectedItem;
+                Gateway selectedGateway = GatewayComboBox.SelectedItem as Gateway;
                 await ChangeGateway(selectedGateway.IP);
             }
             else
