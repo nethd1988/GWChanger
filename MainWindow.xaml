@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:GWChanger"
         mc:Ignorable="d"
-        Title="Đổi Gateway Gà Luoc" 
+        Title="Gateway Kzonesoft - Gà Luoc" 
         Height="450" 
         Width="380"
         WindowStartupLocation="CenterScreen"
@@ -13,9 +13,9 @@
         Background="#1E1E1E">
 
     <Window.Resources>
-        <Style TargetType="Button" x:Key="GamingButton">
+        <Style TargetType="Button" x:Key="ActionButton">
             <Setter Property="Background" Value="#2D2D30"/>
-            <Setter Property="Foreground" Value="#DDD"/>
+            <Setter Property="Foreground" Value="#FFFFFF"/>
             <Setter Property="FontSize" Value="14"/>
             <Setter Property="FontWeight" Value="Bold"/>
             <Setter Property="Height" Value="40"/>
@@ -51,7 +51,7 @@
 
         <Style TargetType="ComboBox">
             <Setter Property="Background" Value="#2D2D30"/>
-            <Setter Property="Foreground" Value="#DDD"/>
+            <Setter Property="Foreground" Value="#FFFFFF"/>
             <Setter Property="Height" Value="40"/>
             <Setter Property="FontSize" Value="14"/>
             <Setter Property="BorderBrush" Value="#555"/>
@@ -60,15 +60,17 @@
         </Style>
 
         <Style TargetType="TextBlock" x:Key="HeaderText">
-            <Setter Property="Foreground" Value="#DDD"/>
+            <Setter Property="Foreground" Value="#FFFFFF"/>
             <Setter Property="FontSize" Value="14"/>
             <Setter Property="Margin" Value="0,0,0,5"/>
+            <Setter Property="FontWeight" Value="Medium"/>
         </Style>
 
         <Style TargetType="TextBlock" x:Key="GatewayText">
             <Setter Property="Foreground" Value="#FF4500"/>
-            <Setter Property="FontSize" Value="24"/>
+            <Setter Property="FontSize" Value="20"/>
             <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
             <Setter Property="TextAlignment" Value="Center"/>
             <Setter Property="Margin" Value="0,5,0,20"/>
         </Style>
@@ -112,7 +114,46 @@
             <ComboBox Grid.Row="3" 
                       x:Name="GatewayComboBox"
                       Margin="0,5,0,10"
-                      SelectionChanged="GatewayComboBox_SelectionChanged"/>
+                      SelectionChanged="GatewayComboBox_SelectionChanged">
+                <ComboBox.Resources>
+                    <!-- Styling cho ComboBoxItem -->
+                    <Style TargetType="{x:Type ComboBoxItem}">
+                        <Setter Property="Background" Value="#B3E0FF"/>
+                        <Setter Property="Foreground" Value="#000000"/>
+                        <Setter Property="Height" Value="30"/>
+                        <Setter Property="FontWeight" Value="SemiBold"/>
+                        <Setter Property="Template">
+                            <Setter.Value>
+                                <ControlTemplate TargetType="{x:Type ComboBoxItem}">
+                                    <Border Background="{TemplateBinding Background}" 
+                                            BorderBrush="#A0A0A0" 
+                                            BorderThickness="0,0,0,1">
+                                        <ContentPresenter Margin="5,3" VerticalAlignment="Center"/>
+                                    </Border>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsSelected" Value="True">
+                                            <Setter Property="Background" Value="#66B2FF"/>
+                                            <Setter Property="Foreground" Value="#000000"/>
+                                        </Trigger>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter Property="Background" Value="#99CCFF"/>
+                                            <Setter Property="Foreground" Value="#000000"/>
+                                        </Trigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </Setter.Value>
+                        </Setter>
+                    </Style>
+                </ComboBox.Resources>
+                <ComboBox.ItemTemplate>
+                    <DataTemplate>
+                        <TextBlock Text="{Binding DisplayName}" 
+                                   FontSize="14" 
+                                   Foreground="#000000" 
+                                   FontWeight="SemiBold"/>
+                    </DataTemplate>
+                </ComboBox.ItemTemplate>
+            </ComboBox>
 
             <!-- Action Buttons -->
             <Grid Grid.Row="4">
@@ -124,13 +165,13 @@
                 <Button Grid.Column="0"
                         x:Name="ChangeButton"
                         Content="Đổi Gateway"
-                        Style="{StaticResource GamingButton}"
+                        Style="{StaticResource ActionButton}"
                         Click="ChangeButton_Click"/>
 
                 <Button Grid.Column="1"
                         x:Name="ExitButton"
                         Content="Thoát"
-                        Style="{StaticResource GamingButton}"
+                        Style="{StaticResource ActionButton}"
                         Click="ExitButton_Click"/>
             </Grid>
 
@@ -143,9 +184,9 @@
 
             <TextBlock Grid.Row="6"
                        x:Name="StatusText"
-                       Text="Sẵn sàng"
+                       Text="Hoàn tất"
                        HorizontalAlignment="Center"
-                       Foreground="#AAA"
+                       Foreground="#FFFFFF"
                        Margin="0,0,0,15"/>
 
             <!-- Logo Section -->
@@ -155,24 +196,23 @@
                     Padding="0,15,0,0">
 
                 <StackPanel>
-                    <Image x:Name="LogoImage" 
-                           Source="logo.png" 
-                           Height="50" 
-                           Margin="0,0,0,10"
-                           Cursor="Hand"/>
-
-                    <TextBlock Text="Cung cấp:" 
+                    <TextBlock Text="KzoneSoft - Gà Luoc" 
                                Foreground="#FF4500" 
                                FontWeight="Bold" 
+                               FontSize="16"
+                               HorizontalAlignment="Center"
+                               Margin="0,0,0,10"/>
+
+                    <TextBlock Text="Phần mềm quản lý Gateway" 
+                               Foreground="#FF4500" 
+                               FontWeight="Bold" 
+                               FontSize="14"
                                HorizontalAlignment="Center"/>
 
-                    <TextBlock Text="* Máy chủ/hệ thống mạng cho phòng Game" 
-                               Foreground="#DDD" 
-                               HorizontalAlignment="Center"/>
-
-                    <TextBlock Text="* Dịch vụ cài đặt và bảo trì phòng Game" 
-                               Foreground="#DDD" 
-                               HorizontalAlignment="Center"/>
+                    <TextBlock Text="Sản phẩm dành cho phòng game và doanh nghiệp" 
+                               Foreground="#FFFFFF" 
+                               HorizontalAlignment="Center"
+                               Margin="0,5,0,0"/>
                 </StackPanel>
             </Border>
         </Grid>
