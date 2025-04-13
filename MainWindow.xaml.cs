@@ -22,10 +22,26 @@ namespace GWChanger
         {
             InitializeComponent();
 
-            // Kiểm tra dịch vụ nhưng không hiển thị bất kỳ thông báo nào
+            // Kiểm tra trạng thái dịch vụ
             _servicesRunning = CheckRequiredServices();
 
-            // Luôn tải danh sách gateway bất kể trạng thái dịch vụ
+            if (!_servicesRunning)
+            {
+                // Nếu cả hai dịch vụ đều không chạy, vô hiệu hóa điều khiển và đóng sau 2 giây
+                StatusText.Text = "";
+                ChangeButton.IsEnabled = false;
+                GatewayComboBox.IsEnabled = false;
+                Task.Delay(2000).ContinueWith(_ =>
+                {
+                    Dispatcher.Invoke(() =>
+                    {
+                        Application.Current.Shutdown();
+                    });
+                });
+                return;
+            }
+
+            // Nếu ít nhất một dịch vụ đang chạy, tiếp tục khởi tạo
             LoadGatewayList();
             GetCurrentGateway();
         }
@@ -34,16 +50,12 @@ namespace GWChanger
         {
             try
             {
-                // Lấy đường dẫn thực thi hiện tại
                 string exePath = Assembly.GetExecutingAssembly().Location;
-                // Lấy ký tự ổ đĩa từ đường dẫn (ví dụ: "E:\")
                 string driveLetter = Path.GetPathRoot(exePath);
-                // Tạo đường dẫn tới file gateways.txt ở thư mục gốc của ổ đĩa
                 return Path.Combine(driveLetter, "gateways.txt");
             }
             catch
             {
-                // Nếu có lỗi, sử dụng đường dẫn mặc định là thư mục hiện tại
                 return "gateways.txt";
             }
         }
@@ -52,105 +64,25 @@ namespace GWChanger
         {
             try
             {
-                // Cách 1: Kiểm tra bằng ServiceController
-                try
+                ServiceController[] services = ServiceController.GetServices();
+                bool anyServiceRunning = false;
+
+                foreach (string requiredService in _requiredServices)
                 {
-                    ServiceController[] services = ServiceController.GetServices();
-                    foreach (string requiredService in _requiredServices)
+                    var service = services.FirstOrDefault(s => s.ServiceName.Equals(requiredService, StringComparison.OrdinalIgnoreCase));
+                    if (service != null && service.Status == ServiceControllerStatus.Running)
                     {
-                        var service = services.FirstOrDefault(s => s.ServiceName.Equals(requiredService, StringComparison.OrdinalIgnoreCase));
-                        if (service != null && service.Status == ServiceControllerStatus.Running)
-                        {
-                            return true;
-                        }
+                        anyServiceRunning = true;
+                        break;
                     }
                 }
-                catch (Exception ex)
-                {
-                    Debug.WriteLine($"Lỗi khi kiểm tra dịch vụ bằng ServiceController: {ex.Message}");
-                }
 
-                // Cách 2: Kiểm tra bằng WMI
-                try
-                {
-                    foreach (string requiredService in _requiredServices)
-                    {
-                        string query = $"SELECT * FROM Win32_Service WHERE Name='{requiredService}' AND State='Running'";
-                        var searcher = new System.Management.ManagementObjectSearcher("root\\CIMV2", query);
-                        var results = searcher.Get();
-
-                        if (results.Count > 0)
-                        {
-                            return true;
-                        }
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Debug.WriteLine($"Lỗi khi kiểm tra dịch vụ bằng WMI: {ex.Message}");
-                }
-
-                // Cách 3: Kiểm tra bằng Process
-                try
-                {
-                    foreach (string requiredService in _requiredServices)
-                    {
-                        Process[] processes = Process.GetProcessesByName(requiredService);
-                        if (processes.Length > 0)
-                        {
-                            return true;
-                        }
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Debug.WriteLine($"Lỗi khi kiểm tra bằng Process: {ex.Message}");
-                }
-
-                // Cách 4: Sử dụng lệnh CMD để kiểm tra dịch vụ
-                try
-                {
-                    foreach (string requiredService in _requiredServices)
-                    {
-                        string output = ExecuteCommandWithOutput($"sc query {requiredService}");
-                        if (output.Contains("RUNNING"))
-                        {
-                            return true;
-                        }
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Debug.WriteLine($"Lỗi khi kiểm tra dịch vụ bằng SC: {ex.Message}");
-                }
-
-                // Không tìm thấy dịch vụ nào đang chạy
+                return anyServiceRunning;
+            }
+            catch
+            {
                 return false;
             }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"Lỗi tổng thể khi kiểm tra dịch vụ: {ex.Message}");
-                return false;
-            }
-        }
-
-        private string ExecuteCommandWithOutput(string command)
-        {
-            var processInfo = new ProcessStartInfo("cmd.exe", $"/c {command}")
-            {
-                CreateNoWindow = true,
-                UseShellExecute = false,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                WindowStyle = ProcessWindowStyle.Hidden
-            };
-
-            var process = new Process { StartInfo = processInfo };
-            process.Start();
-            string output = process.StandardOutput.ReadToEnd();
-            process.WaitForExit();
-
-            return output;
         }
 
         private void LoadGatewayList()
@@ -169,7 +101,6 @@ namespace GWChanger
                 {
                     if (!string.IsNullOrWhiteSpace(line))
                     {
-                        // Định dạng đơn giản: Provider IP
                         var parts = line.Split(new[] { ' ' }, 2);
                         if (parts.Length == 2)
                         {
@@ -230,8 +161,6 @@ namespace GWChanger
                     Dispatcher.Invoke(() =>
                     {
                         _currentGateway = string.IsNullOrEmpty(gateway) ? "Không xác định" : gateway;
-
-                        // Tìm thông tin bổ sung cho gateway hiện tại
                         bool found = false;
                         foreach (dynamic item in _gatewayItems)
                         {
@@ -242,7 +171,6 @@ namespace GWChanger
                                 break;
                             }
                         }
-
                         if (!found)
                         {
                             CurrentGatewayText.Text = _currentGateway;
@@ -250,7 +178,7 @@ namespace GWChanger
                     });
                 });
             }
-            catch (Exception)
+            catch
             {
                 _currentGateway = "Không xác định";
                 CurrentGatewayText.Text = _currentGateway;
@@ -269,8 +197,7 @@ namespace GWChanger
                         Arguments = "/c ipconfig",
                         UseShellExecute = false,
                         RedirectStandardOutput = true,
-                        CreateNoWindow = true,
-                        WindowStyle = ProcessWindowStyle.Hidden
+                        CreateNoWindow = true
                     }
                 };
 
@@ -300,23 +227,13 @@ namespace GWChanger
 
         private void GatewayComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
+            if (!_servicesRunning) return;
+
             if (GatewayComboBox.SelectedItem != null)
             {
                 dynamic selectedGateway = GatewayComboBox.SelectedItem;
                 StatusText.Text = $"Đã chọn {selectedGateway.Name}";
-
-                // Chỉ thực hiện đổi gateway nếu dịch vụ đang chạy, không hiển thị thông báo nếu không
-                if (_servicesRunning)
-                {
-                    // Tự động thực hiện đổi gateway khi chọn
-                    AutoChangeGateway(selectedGateway.IP);
-                }
-                else
-                {
-                    // Không hiển thị bất kỳ thông báo nào về dịch vụ
-                    // Chỉ vô hiệu hóa nút thay đổi
-                    ChangeButton.IsEnabled = false;
-                }
+                AutoChangeGateway(selectedGateway.IP);
             }
         }
 
@@ -334,10 +251,7 @@ namespace GWChanger
                 {
                     try
                     {
-                        // Xóa gateway mặc định hiện tại
                         ExecuteCommand("route delete 0.0.0.0 mask 0.0.0.0");
-
-                        // Thêm gateway mới
                         ExecuteCommand($"route -p add 0.0.0.0 mask 0.0.0.0 {gatewayIP}");
                         return true;
                     }
@@ -352,7 +266,6 @@ namespace GWChanger
                     await AnimateProgressBar();
                     _currentGateway = gatewayIP;
 
-                    // Tìm provider cho gateway đã đổi
                     string displayText = gatewayIP;
                     foreach (dynamic item in _gatewayItems)
                     {
@@ -365,9 +278,7 @@ namespace GWChanger
 
                     CurrentGatewayText.Text = displayText;
                     StatusText.Text = "Hoàn tất";
-
-                    // Tự động đóng ứng dụng sau khi hoàn thành (không hiển thị MessageBox)
-                    await Task.Delay(500); // Chờ nửa giây để người dùng thấy thông báo "Hoàn tất"
+                    await Task.Delay(500);
                     Application.Current.Shutdown();
                 }
                 else
@@ -398,8 +309,7 @@ namespace GWChanger
                 CreateNoWindow = true,
                 UseShellExecute = false,
                 RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                WindowStyle = ProcessWindowStyle.Hidden
+                RedirectStandardError = true
             };
 
             var process = new Process { StartInfo = processInfo };
@@ -424,11 +334,7 @@ namespace GWChanger
 
         private void ChangeButton_Click(object sender, RoutedEventArgs e)
         {
-            if (!_servicesRunning)
-            {
-                // Không hiển thị thông báo về dịch vụ, chỉ đơn giản là không làm gì cả
-                return;
-            }
+            if (!_servicesRunning) return;
 
             if (GatewayComboBox.SelectedItem != null)
             {
