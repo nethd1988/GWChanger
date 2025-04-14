@@ -262,11 +262,12 @@
             </Grid>
 
             <!-- Progress Bar -->
+            <!-- Progress Bar -->
             <ProgressBar Grid.Row="5"
-                         x:Name="ProgressBar"
-                         Margin="0,20,0,5"
-                         Maximum="100"
-                         Value="0">
+             x:Name="ProgressBar"
+             Margin="0,20,0,5"
+             Maximum="240"
+             Value="0">
                 <ProgressBar.Effect>
                     <DropShadowEffect ShadowDepth="1" Direction="270" Color="#FF6B00" Opacity="0.5" BlurRadius="5"/>
                 </ProgressBar.Effect>
