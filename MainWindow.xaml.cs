@@ -44,24 +44,62 @@ namespace GWChanger
         private string _currentGateway;
         private List<GatewayItem> _gatewayItems = new List<GatewayItem>();
         private readonly string[] _requiredServices = { "KzoneClient", "KzoneSyncService" };
-        private bool _servicesRunning = true; // Đổi thành true để phù hợp với AutoIt
+        private bool _servicesRunning = false;
 
         public MainWindow()
         {
             InitializeComponent();
 
-            // Bỏ kiểm tra services để giống với AutoIt
-            _servicesRunning = true;
+            StatusText.Text = "Đang kiểm tra...";
+
+            // Kiểm tra services trước
+            if (!CheckRequiredServices())
+            {
+                // Nếu không có services, tự thoát ứng dụng
+                Application.Current.Shutdown();
+                return;
+            }
+
             StatusText.Text = "Đang tải...";
             LoadGatewayList();
             GetCurrentGateway();
+        }
+
+        private bool CheckRequiredServices()
+        {
+            try
+            {
+                foreach (var serviceName in _requiredServices)
+                {
+                    try
+                    {
+                        var service = new ServiceController(serviceName);
+                        if (service.Status != ServiceControllerStatus.Stopped)
+                        {
+                            _servicesRunning = true;
+                            return true; // Tìm thấy ít nhất một service đang chạy
+                        }
+                    }
+                    catch
+                    {
+                        // Service không tồn tại, tiếp tục kiểm tra service khác
+                    }
+                }
+
+                // Không tìm thấy service nào
+                return false;
+            }
+            catch
+            {
+                // Xử lý lỗi im lặng
+                return false;
+            }
         }
 
         private string GetGatewayFilePath()
         {
             try
             {
-                // Sử dụng file lines.txt như trong AutoIt
                 string exePath = Assembly.GetExecutingAssembly().Location;
                 string exeDir = Path.GetDirectoryName(exePath);
                 return Path.Combine(exeDir, "lines.txt");
@@ -90,7 +128,6 @@ namespace GWChanger
                     {
                         if (!string.IsNullOrWhiteSpace(line))
                         {
-                            // Sử dụng định dạng "Gateway X - 192.168.x.x" như trong AutoIt
                             var parts = line.Split(new[] { '-' }, 2);
                             if (parts.Length == 2)
                             {
@@ -120,11 +157,10 @@ namespace GWChanger
                     }
                 });
             }
-            catch (Exception ex)
+            catch
             {
                 Dispatcher.Invoke(() => {
                     StatusText.Text = "Lỗi đọc cấu hình";
-                    MessageBox.Show($"Lỗi khi đọc file gateway: {ex.Message}", "Lỗi", MessageBoxButton.OK, MessageBoxImage.Error);
                 });
             }
         }
@@ -136,7 +172,6 @@ namespace GWChanger
                 await Task.Run(() => {
                     using (StreamWriter writer = new StreamWriter(filePath))
                     {
-                        // Sử dụng định dạng giống như AutoIt
                         writer.WriteLine("Gateway 1 - 192.168.1.1");
                         writer.WriteLine("Gateway 2 - 192.168.1.2");
                         writer.WriteLine("Gateway 3 - 192.168.1.3");
@@ -144,20 +179,16 @@ namespace GWChanger
                     }
                 });
 
-                Dispatcher.Invoke(() => {
-                    MessageBox.Show($"Đã tạo file cấu hình gateway mặc định tại:\n{filePath}\nVui lòng thay đổi cấu hình trong file lines.txt sau đó khởi động lại ứng dụng!",
-                        "Thông báo", MessageBoxButton.OK, MessageBoxImage.Information);
+                // Mở notepad im lặng không hiện thông báo
+                Process.Start("notepad.exe", filePath);
 
-                    Process.Start("notepad.exe", filePath);
-                    Application.Current.Shutdown();
-                });
+                // Đợi một chút để notepad mở xong trước khi đóng ứng dụng
+                await Task.Delay(1000);
+                Application.Current.Shutdown();
             }
-            catch (Exception ex)
+            catch
             {
-                Dispatcher.Invoke(() => {
-                    MessageBox.Show($"Không thể tạo file gateway: {ex.Message}", "Lỗi", MessageBoxButton.OK, MessageBoxImage.Error);
-                    Application.Current.Shutdown();
-                });
+                Application.Current.Shutdown();
             }
         }
 
@@ -230,16 +261,16 @@ namespace GWChanger
             }
         }
 
-        private void GatewayComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        private async void GatewayComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            // Bỏ tự động thay đổi Gateway khi chọn từ combo box để giống với AutoIt
+            // Tự động thay đổi Gateway khi chọn từ combobox
             if (GatewayComboBox.SelectedItem != null)
             {
                 var selectedGateway = GatewayComboBox.SelectedItem as GatewayItem;
                 if (selectedGateway != null)
                 {
-                    StatusText.Text = $"Đã chọn {selectedGateway.DisplayName}";
-                    // Không tự động đổi gateway ở đây nữa
+                    StatusText.Text = $"Đang thay đổi sang {selectedGateway.DisplayName}";
+                    await ChangeGateway(selectedGateway.IP);
                 }
             }
         }
@@ -256,7 +287,7 @@ namespace GWChanger
             }
             else
             {
-                MessageBox.Show("Vui lòng chọn gateway để đổi", "Thông báo", MessageBoxButton.OK, MessageBoxImage.Warning);
+                StatusText.Text = "Vui lòng chọn gateway";
             }
         }
 
@@ -270,7 +301,6 @@ namespace GWChanger
                 GatewayComboBox.IsEnabled = false;
                 StatusText.Text = "Đang thực hiện...";
 
-                // Chạy lệnh route giống như AutoIt
                 success = await Task.Run(() =>
                 {
                     try
@@ -287,12 +317,9 @@ namespace GWChanger
 
                 if (success)
                 {
-                    // Sử dụng thời gian chờ lâu hơn để giống với AutoIt (khoảng 6 giây)
                     await AnimateProgressBarLike_AutoIt();
-
                     _currentGateway = gatewayIP;
 
-                    // Tìm tên hiển thị phù hợp
                     string displayText = gatewayIP;
                     foreach (var item in _gatewayItems)
                     {
@@ -306,27 +333,22 @@ namespace GWChanger
                     CurrentGatewayText.Text = displayText;
                     StatusText.Text = "Hoàn tất";
 
-                    MessageBox.Show($"Đã đổi sang Gateway {gatewayIP}", "Thông báo", MessageBoxButton.OK, MessageBoxImage.Information);
-
-                    // Bật lại các controls (không tự động đóng ứng dụng)
-                    ChangeButton.IsEnabled = true;
-                    ExitButton.IsEnabled = true;
-                    GatewayComboBox.IsEnabled = true;
+                    // Tự động thoát ứng dụng sau khi hoàn thành, không hiện thông báo
+                    await Task.Delay(500); // Đợi một chút để người dùng thấy "Hoàn tất"
+                    Application.Current.Shutdown();
                 }
                 else
                 {
                     StatusText.Text = "Lỗi thay đổi Gateway";
-                    MessageBox.Show("Không thể thay đổi Gateway. Hãy chắc chắn bạn đang chạy với quyền Administrator.", "Lỗi", MessageBoxButton.OK, MessageBoxImage.Error);
                     ChangeButton.IsEnabled = true;
                     ExitButton.IsEnabled = true;
                     GatewayComboBox.IsEnabled = true;
                     ProgressBar.Value = 0;
                 }
             }
-            catch (Exception ex)
+            catch
             {
                 StatusText.Text = "Lỗi";
-                MessageBox.Show($"Lỗi khi đổi gateway: {ex.Message}", "Lỗi", MessageBoxButton.OK, MessageBoxImage.Error);
                 ChangeButton.IsEnabled = true;
                 ExitButton.IsEnabled = true;
                 GatewayComboBox.IsEnabled = true;
@@ -336,15 +358,13 @@ namespace GWChanger
 
         private async Task AnimateProgressBarLike_AutoIt()
         {
-            // Mô phỏng thời gian chờ giống như trong AutoIt
-            // AutoIt sử dụng vòng lặp 0 đến 240 với thời gian chờ là 25ms mỗi bước
             ProgressBar.Maximum = 240;
             ProgressBar.Value = 0;
 
             for (int i = 0; i <= 240; i++)
             {
                 ProgressBar.Value = i;
-                await Task.Delay(25); // 25ms mỗi bước, giống AutoIt
+                await Task.Delay(25); // 25ms mỗi bước
             }
         }
 
