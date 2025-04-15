@@ -100,13 +100,17 @@ namespace GWChanger
         {
             try
             {
+                // Lấy ổ đĩa gốc nơi ứng dụng đang chạy
                 string exePath = Assembly.GetExecutingAssembly().Location;
-                string exeDir = Path.GetDirectoryName(exePath);
-                return Path.Combine(exeDir, "lines.txt");
+                string driveName = Path.GetPathRoot(exePath);
+
+                // Tạo đường dẫn đến file gateways.txt trong thư mục gốc
+                return Path.Combine(driveName, "gateways.txt");
             }
             catch
             {
-                return "lines.txt";
+                // Nếu có lỗi, mặc định về thư mục gốc ổ C
+                return @"C:\gateways.txt";
             }
         }
 
@@ -128,7 +132,8 @@ namespace GWChanger
                     {
                         if (!string.IsNullOrWhiteSpace(line))
                         {
-                            var parts = line.Split(new[] { '-' }, 2);
+                            // Sử dụng định dạng mới "Viettel 192.168.1.1"
+                            var parts = line.Split(new[] { ' ' }, 2);
                             if (parts.Length == 2)
                             {
                                 var provider = parts[0].Trim();
@@ -170,12 +175,20 @@ namespace GWChanger
             try
             {
                 await Task.Run(() => {
+                    // Đảm bảo thư mục tồn tại
+                    string directory = Path.GetDirectoryName(filePath);
+                    if (!Directory.Exists(directory))
+                    {
+                        Directory.CreateDirectory(directory);
+                    }
+
                     using (StreamWriter writer = new StreamWriter(filePath))
                     {
-                        writer.WriteLine("Gateway 1 - 192.168.1.1");
-                        writer.WriteLine("Gateway 2 - 192.168.1.2");
-                        writer.WriteLine("Gateway 3 - 192.168.1.3");
-                        writer.WriteLine("Gateway 4 - 192.168.1.4");
+                        // Sử dụng định dạng nhà mạng theo yêu cầu
+                        writer.WriteLine("Viettel 192.168.1.1");
+                        writer.WriteLine("VNPT 192.168.1.2");
+                        writer.WriteLine("FPT 192.168.1.3");
+                        writer.WriteLine("CMC 192.168.1.4");
                     }
                 });
 
@@ -269,7 +282,7 @@ namespace GWChanger
                 var selectedGateway = GatewayComboBox.SelectedItem as GatewayItem;
                 if (selectedGateway != null)
                 {
-                    StatusText.Text = $"Đang thay đổi sang {selectedGateway.DisplayName}";
+                    StatusText.Text = $"Đang thay đổi sang {selectedGateway.Provider}";
                     await ChangeGateway(selectedGateway.IP);
                 }
             }
@@ -320,17 +333,17 @@ namespace GWChanger
                     await AnimateProgressBarLike_AutoIt();
                     _currentGateway = gatewayIP;
 
-                    string displayText = gatewayIP;
+                    string providerName = gatewayIP;
                     foreach (var item in _gatewayItems)
                     {
                         if (item.IP == gatewayIP)
                         {
-                            displayText = item.DisplayName;
+                            providerName = item.Provider;
                             break;
                         }
                     }
 
-                    CurrentGatewayText.Text = displayText;
+                    CurrentGatewayText.Text = providerName;
                     StatusText.Text = "Hoàn tất";
 
                     // Tự động thoát ứng dụng sau khi hoàn thành, không hiện thông báo
